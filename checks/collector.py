@@ -6,6 +6,9 @@ import socket
 import sys
 import time
 
+# 3p
+import simplejson as json
+
 # project
 from checks import AGENT_METRICS_CHECK_NAME, AgentCheck, create_service_check
 from checks.check_status import (
@@ -18,7 +21,6 @@ from checks.check_status import (
 from checks.datadog import DdForwarder, Dogstreams
 from checks.ganglia import Ganglia
 from config import get_system_stats, get_version
-from resources.processes import Processes as ResProcesses
 import checks.system.unix as u
 import checks.system.win32 as w32
 import modules
@@ -40,6 +42,18 @@ log = logging.getLogger(__name__)
 FLUSH_LOGGING_PERIOD = 10
 FLUSH_LOGGING_INITIAL = 5
 DD_CHECK_TAG = 'dd_check:{0}'
+
+# Description of the format of the `processes` resource check, identical to the legacy check
+# Is sent on the first run of the collector
+PROCESSES_FORMAT_DESCRIPTION = [
+    [2, "user", "str", "append", "append", "append", "append", False, False],
+    [2, "pct_cpu", "float", "sum", "avg", "sum", "avg", False, False],
+    [2, 'pct_mem', 'float', 'sum', 'avg', 'sum', 'avg', False, False],
+    [2, 'vsz', 'int', 'sum', 'avg', 'sum', 'avg', False, False],
+    [2, 'rss', 'int', 'sum', 'avg', 'sum', 'avg', False, False],
+    [2, 'family', 'str', None, None, 'append', 'append', True, True],
+    [2, 'ps_count', 'int', 'sum', 'avg', 'sum', 'avg', False, False],
+]
 
 
 class AgentPayload(collections.MutableMapping):
@@ -173,6 +187,10 @@ class Collector(object):
                 'start': time.time(),
                 'interval': int(agentConfig.get('agent_checks_interval', 10 * 60))
             },
+            'processes': {
+                'start': time.time(),
+                'interval': int(agentConfig.get('processes_interval', 60))
+            }
         }
         socket.setdefaulttimeout(15)
         self.run_count = 0
@@ -222,10 +240,8 @@ class Collector(object):
             except Exception:
                 log.exception('Unable to load custom check module %s' % module_spec)
 
-        # Resource Checks
-        self._resources_checks = [
-            ResProcesses(log, self.agentConfig)
-        ]
+        # Resource Checks (deprecated)
+        self._resources_checks = []
 
     def stop(self):
         """
@@ -377,6 +393,22 @@ class Collector(object):
                         payload['resources'][resources_check.RESOURCE_KEY] = res_value
                 except Exception:
                     log.exception("Error running resource check %s" % resources_check.RESOURCE_KEY)
+
+            if self._should_send_additional_data('processes'):
+                gohai_processes = self._run_gohai_processes()
+                if gohai_processes:
+                    try:
+                        gohai_processes_json = json.loads(gohai_processes)
+                        processes_payload = {
+                            'snaps': [gohai_processes_json.get('processes')],
+                            'format_version': 1
+                        }
+                        if self._is_first_run():
+                            processes_payload['format_description'] = PROCESSES_FORMAT_DESCRIPTION
+                        payload['resources']['processes'] = processes_payload
+                        has_resource = True
+                    except Exception:
+                        log.exception("Error running gohai processes collection")
 
             if has_resource:
                 payload['resources']['meta'] = {
@@ -633,22 +665,9 @@ class Collector(object):
         # Periodically send the host metadata.
         if self._should_send_additional_data('host_metadata'):
             # gather metadata with gohai
-            try:
-                if not Platform.is_windows():
-                    command = "gohai"
-                else:
-                    command = "gohai\gohai.exe"
-                gohai_metadata, gohai_err, _ = get_subprocess_output([command], log)
+            gohai_metadata = self._run_gohai_metadata()
+            if gohai_metadata:
                 payload['gohai'] = gohai_metadata
-                if gohai_err:
-                    log.warning("GOHAI LOG | {0}".format(gohai_err))
-            except OSError as e:
-                if e.errno == 2:  # file not found, expected when install from source
-                    log.info("gohai file not found")
-                else:
-                    log.warning("Unexpected OSError when running gohai %s", e)
-            except Exception as e:
-                log.warning("gohai command failed with error %s" % str(e))
 
             payload['systemStats'] = get_system_stats()
             payload['meta'] = self._get_hostname_metadata()
@@ -773,6 +792,33 @@ class Collector(object):
             return True
 
         return False
+
+    def _run_gohai_metadata(self):
+        return self._run_gohai(['--exclude', 'processes'])
+
+    def _run_gohai_processes(self):
+        return self._run_gohai(['--only', 'processes'])
+
+    def _run_gohai(self, options):
+        output = None
+        try:
+            if not Platform.is_windows():
+                command = "gohai"
+            else:
+                command = "gohai\gohai.exe"
+            output, err, _ = get_subprocess_output([command] + options, log)
+            if err:
+                log.warning("GOHAI LOG | {0}".format(err))
+        except OSError as e:
+            if e.errno == 2:  # file not found, expected when install from source
+                log.info("gohai file not found")
+            else:
+                log.warning("Unexpected OSError when running gohai %s", e)
+        except Exception as e:
+            log.warning("gohai command failed with error %s", e)
+
+        return output
+
 
 def sanitize_tzname(tzname):
     """ Returns the tzname given, and deals with Japanese encoding issue
