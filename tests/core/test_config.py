@@ -4,6 +4,7 @@ import os
 import os.path
 import tempfile
 import unittest
+from shutil import copyfile, rmtree
 
 # project
 from config import get_config, load_check_directory
@@ -110,3 +111,87 @@ class TestConfig(unittest.TestCase):
 
         for c in DEFAULT_CHECKS:
             self.assertTrue(c in init_checks_names)
+
+class TestConfigLoadCheckDirectory(unittest.TestCase):
+
+    TEMP_ETC_CHECKS_DIR = '/tmp/dd-agent-tests/etc/checks.d'
+    TEMP_ETC_CONF_DIR = '/tmp/dd-agent-tests/etc/conf.d'
+    TEMP_AGENT_CHECK_DIR = '/tmp/dd-agent-tests'
+    TEMP_DIRS = [TEMP_ETC_CHECKS_DIR, TEMP_ETC_CONF_DIR, TEMP_AGENT_CHECK_DIR]
+    FIXTURE_PATH = 'tests/core/fixtures/checks'
+
+    def setUp(self):
+        import config as Config
+        self.patched_get_checksd_path = Config.get_checksd_path
+        Config.get_checksd_path = lambda _: self.TEMP_AGENT_CHECK_DIR
+        self.patched_get_confd_path = Config.get_confd_path
+        Config.get_confd_path = lambda _: self.TEMP_ETC_CONF_DIR
+
+
+        for _dir in self.TEMP_DIRS:
+            if not os.path.exists(_dir):
+                os.makedirs(_dir)
+
+        # invalid config
+        copyfile('%s/invalid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check0.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check0.py' % self.TEMP_AGENT_CHECK_DIR)
+
+        # valid config with checks:
+
+        # not found
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check1.yaml' % self.TEMP_ETC_CONF_DIR)
+
+        # found in agent/checks.d only
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check2.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check2.py' % self.TEMP_AGENT_CHECK_DIR)
+
+        # found in /etc/dd-agent/checks.d only
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check3.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check3.py' % self.TEMP_ETC_CHECKS_DIR)
+
+        # found in agent/checks.d and /etc/dd-agent/checks.d
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check4.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_2.py' % self.FIXTURE_PATH,
+            '%s/test_check4.py' % self.TEMP_AGENT_CHECK_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check4.py' % self.TEMP_ETC_CHECKS_DIR)
+
+        # check not inheriting from AgentCheck
+        # shouldn't be tagged as failed but shouldn't be initialized neither
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check5.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/invalid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check5.py' % self.TEMP_AGENT_CHECK_DIR)
+
+        # invalid check (import error)
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check6.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/invalid_check_2.py' % self.FIXTURE_PATH,
+            '%s/test_check6.py' % self.TEMP_AGENT_CHECK_DIR)
+
+    def testLoadCheckDirectory(self):
+        checks = load_check_directory({"additional_checksd": self.TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(2, len(checks['init_failed_checks']))
+        self.assertTrue('test_check0' in checks['init_failed_checks'])
+        self.assertTrue('test_check6' in checks['init_failed_checks'])
+        # assert initialization
+        self.assertEquals(3, len(checks['initialized_checks']))
+        for check in checks['initialized_checks']:
+            # assert priority
+            self.assertEquals('valid_check_1', check.check(None))
+
+    def tearDown(self):
+        import config as Config
+        Config.get_checksd_path = self.patched_get_checksd_path
+        Config.get_confd_path = self.patched_get_confd_path
+
+        for _dir in self.TEMP_DIRS:
+            rmtree(_dir)
