@@ -114,10 +114,14 @@ class TestConfig(unittest.TestCase):
 
 class TestConfigLoadCheckDirectory(unittest.TestCase):
 
+    TEMP_3RD_PARTY_CHECKS_DIR = '/tmp/dd-agent-tests/3rd-party'
     TEMP_ETC_CHECKS_DIR = '/tmp/dd-agent-tests/etc/checks.d'
     TEMP_ETC_CONF_DIR = '/tmp/dd-agent-tests/etc/conf.d'
     TEMP_AGENT_CHECK_DIR = '/tmp/dd-agent-tests'
-    TEMP_DIRS = [TEMP_ETC_CHECKS_DIR, TEMP_ETC_CONF_DIR, TEMP_AGENT_CHECK_DIR]
+    TEMP_DIRS = [
+        '%s/test_check' % TEMP_3RD_PARTY_CHECKS_DIR,
+        TEMP_ETC_CHECKS_DIR, TEMP_ETC_CONF_DIR, TEMP_AGENT_CHECK_DIR
+    ]
     FIXTURE_PATH = 'tests/core/fixtures/checks'
 
     def setUp(self):
@@ -126,6 +130,8 @@ class TestConfigLoadCheckDirectory(unittest.TestCase):
         Config.get_checksd_path = lambda _: self.TEMP_AGENT_CHECK_DIR
         self.patched_get_confd_path = Config.get_confd_path
         Config.get_confd_path = lambda _: self.TEMP_ETC_CONF_DIR
+        self.patched_get_3rd_party_path = Config.get_3rd_party_path
+        Config.get_3rd_party_path = lambda _: self.TEMP_3RD_PARTY_CHECKS_DIR
 
         for _dir in self.TEMP_DIRS:
             if not os.path.exists(_dir):
@@ -190,10 +196,33 @@ class TestConfigLoadCheckDirectory(unittest.TestCase):
         checks = load_check_directory({"additional_checksd": self.TEMP_ETC_CHECKS_DIR}, "foo")
         self.assertEquals(1, len(checks['init_failed_checks']))
 
+    def testConfig3rdPartyAgent(self):
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_2.py' % self.FIXTURE_PATH,
+            '%s/test_check.py' % self.TEMP_AGENT_CHECK_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check/check.py' % self.TEMP_3RD_PARTY_CHECKS_DIR)
+        checks = load_check_directory({"additional_checksd": self.TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+        self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
+
+    def testConfigETC3rdParty(self):
+        copyfile('%s/valid_conf.yaml' % self.FIXTURE_PATH,
+            '%s/test_check.yaml' % self.TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_2.py' % self.FIXTURE_PATH,
+            '%s/test_check/check.py' % self.TEMP_3RD_PARTY_CHECKS_DIR)
+        copyfile('%s/valid_check_1.py' % self.FIXTURE_PATH,
+            '%s/test_check.py' % self.TEMP_ETC_CHECKS_DIR)
+        checks = load_check_directory({"additional_checksd": self.TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+        self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
+
     def tearDown(self):
         import config as Config
         Config.get_checksd_path = self.patched_get_checksd_path
         Config.get_confd_path = self.patched_get_confd_path
+        Config.get_3rd_party_path = self.patched_get_3rd_party_path
 
         for _dir in self.TEMP_DIRS:
             rmtree(_dir)

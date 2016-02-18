@@ -677,6 +677,18 @@ def get_checksd_path(osname=None):
     else:
         return _unix_checksd_path()
 
+def get_3rd_party_path(osname=None):
+    if not osname:
+        osname = get_os()
+    if osname in ['windows', 'mac']:
+        raise PathNotFound()
+
+    cur_path = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.join(cur_path, '../3rd-party')
+    if os.path.exists(path):
+        return path
+    raise PathNotFound(path)
+
 
 def get_win32service_file(osname, filename):
     # This file is needed to log in the event viewer for windows
@@ -784,10 +796,16 @@ def _checks_places(agentConfig, osname):
         log.error(e.args[0])
         sys.exit(3)
 
-    return [
-        lambda name: os.path.join(agentConfig['additional_checksd'], '%s.py' % name),
-        lambda name: os.path.join(checksd_path, '%s.py' % name),
-    ]
+    places = [lambda name: os.path.join(agentConfig['additional_checksd'], '%s.py' % name)]
+
+    try:
+        thrird_party_path = get_3rd_party_path(osname)
+        places.append(lambda name: os.path.join(thrird_party_path, name, 'check.py'))
+    except PathNotFound:
+        pass
+
+    places.append(lambda name: os.path.join(checksd_path, '%s.py' % name))
+    return places
 
 def _validate_config(config_path, check_name):
 
