@@ -799,10 +799,10 @@ def _checks_places(agentConfig, osname):
     places = [lambda name: os.path.join(agentConfig['additional_checksd'], '%s.py' % name)]
 
     try:
-        thrird_party_path = get_3rd_party_path(osname)
-        places.append(lambda name: os.path.join(thrird_party_path, name, 'check.py'))
+        third_party_path = get_3rd_party_path(osname)
+        places.append(lambda name: os.path.join(third_party_path, name, 'check.py'))
     except PathNotFound:
-        pass
+        log.debug('No 3rd-party path found')
 
     places.append(lambda name: os.path.join(checksd_path, '%s.py' % name))
     return places
@@ -904,6 +904,7 @@ def load_check_directory(agentConfig, hostname):
     checks_places = _checks_places(agentConfig, osname)
 
     for config_path in itertools.chain(*all_configs_paths):
+        # '/etc/dd-agent/checks.d/my_check.py' -> 'my_check'
         check_name = config_path.rsplit('.', 1)[0].rsplit('/', 1)[-1]
 
         conf_is_valid, check_config, invalid_check = _validate_config(config_path, check_name)
@@ -930,7 +931,7 @@ def load_check_directory(agentConfig, hostname):
 
             _update_python_path(check_config)
 
-            log.debug('Loaded check.d/%s.py' % check_name)
+            log.debug('Loaded %s' % check_path)
             break  # we succesfully initialized this check, let's go to next config
 
     init_failed_checks.update(deprecated_checks)
