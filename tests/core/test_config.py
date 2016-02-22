@@ -225,6 +225,13 @@ class TestConfigLoadCheckDirectory(unittest.TestCase):
         self.assertEquals(1, len(checks['initialized_checks']))
         self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
 
+    def testConfigDeprecatedNagiosConfig(self, *args):
+        copyfile('%s/valid_check_1.py' % FIXTURE_PATH,
+            '%s/nagios.py' % TEMP_ETC_CHECKS_DIR)
+        checks = load_check_directory({"nagios_perf_cfg": None, "additional_checksd": TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+        self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
+
     def tearDown(self):
         for _dir in self.TEMP_DIRS:
             rmtree(_dir)

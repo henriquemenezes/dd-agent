@@ -782,7 +782,7 @@ def _all_configs_paths(osname, agentConfig):
     if not any('nagios' in config for config in itertools.chain(*all_configs)):
         # check if it's configured in datadog.conf the old way
         if any([nagios_key in agentConfig for nagios_key in NAGIOS_OLD_CONF_KEYS]):
-            all_configs.append('deprecated_nagios')
+            all_configs.append(['deprecated/nagios'])
 
 
     return all_configs
@@ -807,13 +807,13 @@ def _checks_places(agentConfig, osname):
     places.append(lambda name: os.path.join(checksd_path, '%s.py' % name))
     return places
 
-def _validate_config(config_path, check_name):
+def _validate_config(config_path, check_name, agentConfig):
 
-    if config_path == 'deprecated_nagios':
+    if config_path == 'deprecated/nagios':
         log.warning("Configuring Nagios in datadog.conf is deprecated "
                     "and will be removed in a future version. "
                     "Please use conf.d")
-        check_config = {'instances':[dict((key, agentConfig[key]) for key in agentConfig if key in NAGIOS_OLD_CONF_KEYS)]}
+        check_config = {'instances':[dict((key, value) for (key, value) in agentConfig.iteritems() if key in NAGIOS_OLD_CONF_KEYS)]}
         return True, check_config, {}
 
     try:
@@ -907,7 +907,7 @@ def load_check_directory(agentConfig, hostname):
         # '/etc/dd-agent/checks.d/my_check.py' -> 'my_check'
         check_name = config_path.rsplit('.', 1)[0].rsplit('/', 1)[-1]
 
-        conf_is_valid, check_config, invalid_check = _validate_config(config_path, check_name)
+        conf_is_valid, check_config, invalid_check = _validate_config(config_path, check_name, agentConfig)
         init_failed_checks.update(invalid_check)
         if not conf_is_valid:
             continue
