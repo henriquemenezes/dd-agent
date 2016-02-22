@@ -216,6 +216,15 @@ class TestConfigLoadCheckDirectory(unittest.TestCase):
         self.assertEquals(1, len(checks['initialized_checks']))
         self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
 
+    def testConfigInheritedCheck(self, *args):
+        copyfile('%s/valid_conf.yaml' % FIXTURE_PATH,
+            '%s/test_check.yaml' % TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_sub_check.py' % FIXTURE_PATH,
+            '%s/test_check.py' % TEMP_ETC_CHECKS_DIR)
+        checks = load_check_directory({"additional_checksd": TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+        self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
+
     def tearDown(self):
         for _dir in self.TEMP_DIRS:
             rmtree(_dir)
