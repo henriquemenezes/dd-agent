@@ -634,11 +634,7 @@ class Collector(object):
         if self._should_send_additional_data('host_metadata'):
             # gather metadata with gohai
             try:
-                if not Platform.is_windows():
-                    command = "gohai"
-                else:
-                    command = "gohai\gohai.exe"
-                gohai_metadata, gohai_err, _ = get_subprocess_output([command], log)
+                gohai_metadata, gohai_err, _ = get_subprocess_output(["gohai"], log)
                 payload['gohai'] = gohai_metadata
                 if gohai_err:
                     log.warning("GOHAI LOG | {0}".format(gohai_err))
