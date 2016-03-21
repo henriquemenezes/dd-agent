@@ -208,12 +208,13 @@ class NetworkCheck(AgentCheck):
 
     def _get_instance_key(self, instance):
         key = instance.get('name', None)
-        if key is None:
-            return None
+        if key:
+            return key
 
+        host = instance.get('host', None)
         port = instance.get('port', None)
-        if port:
-            key = "{name}:{port}".format(name=key, port=instance['port'])
+        if host and port:
+            key = "{host}:{port}".format(host=host, port=instance['port'])
 
         return key
 

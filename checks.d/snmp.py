@@ -53,7 +53,8 @@ class SnmpCheck(NetworkCheck):
     def __init__(self, name, init_config, agentConfig, instances):
         for instance in instances:
             if 'name' not in instance:
-                instance['name'] = instance['ip_address']
+                port = int(instance.get("port", 161)) # Default SNMP port
+                instance['name'] = "{0}:{1}".format(instance['ip_address'], port)
             instance['skip_event'] = True
 
         self.generators = {}
