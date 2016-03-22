@@ -43,6 +43,9 @@ namespace :ci do
 
     task lint: ['rubocop'] do
       sh %(flake8)
+      sh %(find . -name '*.py' -not\
+             \\( -path '*.cache*' -or -path '*embedded*' -or -path '*venv*' -or -path '*.git*' \\)\
+             | xargs -n 1 pylint --rcfile=./.pylintrc)
     end
 
     task script: ['ci:common:script', :coverage, :lint] do
