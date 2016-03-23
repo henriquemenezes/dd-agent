@@ -23,7 +23,7 @@ from util import check_yaml, get_os
 from utils.platform import Platform
 from utils.proxy import get_proxy
 from utils.service_discovery.configcheck import CONFIG_FROM_FILE
-from utils.service_discovery.config_stores import extract_sd_config, SD_CONFIG_BACKENDS
+from utils.service_discovery.config import extract_agent_config
 from utils.service_discovery.sd_backend import get_sd_backend, AUTO_CONFIG_DIR, SD_BACKENDS
 from utils.subprocess_output import (
     get_subprocess_output,
@@ -397,29 +397,12 @@ def get_config(parse_args=True, cfg_path=None, options=None):
 
         # Service discovery
         if config.has_option('Main', 'service_discovery_backend'):
-            backend = config.get('Main', 'service_discovery_backend')
-            agentConfig['service_discovery'] = True
-
-            conf_backend = None
-            if config.has_option('Main', 'sd_config_backend'):
-                conf_backend = config.get('Main', 'sd_config_backend')
-
-            if backend not in SD_BACKENDS:
-                log.error("The backend {0} is not supported. "
-                          "Service discovery won't be enabled.".format(backend))
-                agentConfig['service_discovery'] = False
-
-            if conf_backend is None:
-                log.warning('No configuration backend provided for service discovery. '
-                            'Only auto config templates will be used.')
-            elif conf_backend not in SD_CONFIG_BACKENDS:
-                log.error("The config backend {0} is not supported. "
-                          "Only auto config templates will be used.".format(conf_backend))
-                conf_backend = None
-            agentConfig['sd_config_backend'] = conf_backend
-
-            additional_config = extract_sd_config(config)
-            agentConfig.update(additional_config)
+            try:
+                additional_config = extract_agent_config(config)
+                agentConfig.update(additional_config)
+            except:
+                log.error('Failed to load the agent configuration related to '
+                          'service discovery. It will not be used.')
 
         # Concerns only Windows
         if config.has_option('Main', 'use_web_info_page'):
