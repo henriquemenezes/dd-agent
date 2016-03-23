@@ -12,6 +12,7 @@ from config import _is_affirmative
 from utils.dockerutil import DockerUtil, MountException
 from utils.kubeutil import get_kube_labels
 from utils.platform import Platform
+from utils.service_discovery.sd_backend import get_sd_backend
 
 
 EVENT_TYPE = 'docker'
@@ -564,7 +565,7 @@ class DockerDaemon(AgentCheck):
         """Get the list of events."""
         events, should_reload_conf = self.docker_util.get_events()
         if should_reload_conf and self._service_discovery:
-            self.agentConfig['reload_check_configs'] = True
+            get_sd_backend(self.agentConfig).reload_check_configs = True
         return events
 
     def _pre_aggregate_events(self, api_events, containers_by_id):

@@ -9,12 +9,9 @@ from urllib3.exceptions import TimeoutError
 # project
 from utils.checkfiles import get_check_class, get_auto_conf, get_auto_conf_images
 from utils.singleton import Singleton
+from utils.service_discovery.configcheck import CONFIG_FROM_AUTOCONF, CONFIG_FROM_TEMPLATE
 
 log = logging.getLogger(__name__)
-
-CONFIG_FROM_AUTOCONF = 'auto-configuration'
-CONFIG_FROM_TEMPLATE = 'template'
-SD_TEMPLATE_DIR = '/datadog/check_configs'
 
 
 class KeyNotFound(Exception):
@@ -33,7 +30,7 @@ class AbstractConfigStore(object):
         self.settings = self._extract_settings(agentConfig)
         self.client = self.get_client()
         self.sd_template_dir = agentConfig.get('sd_template_dir')
-        self.AUTO_CONF_IMAGES = get_auto_conf_images(agentConfig)
+        self.auto_conf_images = get_auto_conf_images(agentConfig)
 
     @classmethod
     def _drop(cls):
@@ -53,8 +50,8 @@ class AbstractConfigStore(object):
         raise NotImplementedError()
 
     def _get_auto_config(self, image_name):
-        if image_name in self.AUTO_CONF_IMAGES:
-            check_name = self.AUTO_CONF_IMAGES[image_name]
+        if image_name in self.auto_conf_images:
+            check_name = self.auto_conf_images[image_name]
 
             # get the check class to verify it matches
             check = get_check_class(self.agentConfig, check_name)
@@ -137,27 +134,6 @@ class AbstractConfigStore(object):
             self.previous_config_index = config_index
             return True
         return False
-
-    @staticmethod
-    def extract_sd_config(config):
-        """Extract configuration about service discovery for the agent"""
-        sd_config = {}
-        if config.has_option('Main', 'sd_config_backend'):
-            sd_config['sd_config_backend'] = config.get('Main', 'sd_config_backend')
-        else:
-            sd_config['sd_config_backend'] = None
-        if config.has_option('Main', 'sd_template_dir'):
-            sd_config['sd_template_dir'] = config.get(
-                'Main', 'sd_template_dir')
-        else:
-            sd_config['sd_template_dir'] = SD_TEMPLATE_DIR
-        if config.has_option('Main', 'sd_backend_host'):
-            sd_config['sd_backend_host'] = config.get(
-                'Main', 'sd_backend_host')
-        if config.has_option('Main', 'sd_backend_port'):
-            sd_config['sd_backend_port'] = config.get(
-                'Main', 'sd_backend_port')
-        return sd_config
 
 
 class StubStore(AbstractConfigStore):

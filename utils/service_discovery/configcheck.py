@@ -4,6 +4,11 @@ from utils.dockerutil import DockerUtil
 from utils.service_discovery.config_stores import get_config_store
 
 
+CONFIG_FROM_AUTOCONF = 'auto-configuration'
+CONFIG_FROM_FILE = 'YAML file'
+CONFIG_FROM_TEMPLATE = 'template'
+
+
 def sd_configcheck(agentConfig):
     hostname = get_hostname(agentConfig)
     agentConfig['trace_config'] = True

@@ -45,6 +45,7 @@ from utils.pidfile import PidFile
 from utils.profile import AgentProfiler
 from utils.service_discovery.configcheck import sd_configcheck
 from utils.service_discovery.config_stores import get_config_store
+from utils.service_discovery.sd_backend import get_sd_backend
 
 # Constants
 PID_NAME = "dd-agent"
@@ -76,6 +77,7 @@ class Agent(Daemon):
         self.collector_profile_interval = DEFAULT_COLLECTOR_PROFILE_INTERVAL
         self.check_frequency = None
         self.configs_reloaded = False
+        self.sd_backend = None
 
     def _handle_sigterm(self, signum, frame):
         """Handles SIGTERM and SIGINT, which gracefully stops the agent."""
@@ -144,6 +146,7 @@ class Agent(Daemon):
         hostname = get_hostname(self._agentConfig)
         systemStats = get_system_stats()
         emitters = self._get_emitters()
+        self.sd_backend = get_sd_backend(self._agentConfig)
 
         # Load the checks.d checks
         self._checksd = load_check_directory(self._agentConfig, hostname)
@@ -184,23 +187,29 @@ class Agent(Daemon):
                                start_event=self.start_event,
                                configs_reloaded=self.configs_reloaded)
 
+            # This flag is used to know if the check configs have been reloaded at the current
+            # run of the agent yet or not. It's used by the collector to know if it needs to
+            # look for the AgentMetrics check and pop it out.
+            # See: https://github.com/DataDog/dd-agent/blob/5.6.x/checks/collector.py#L265-L272
             self.configs_reloaded = False
 
-            # Look for change in the config template store to trigger a config reload
+            # Look for change in the config template store.
+            # The self.sd_backend.reload_check_configs flag is set
+            # to True if a config reload is needed.
             if self._agentConfig.get('service_discovery') and \
-               not self._agentConfig.get('reload_check_configs'):
+               not self.sd_backend.reload_check_configs:
                 try:
-                    self._agentConfig['reload_check_configs'] = get_config_store(
+                    self.sd_backend.reload_check_configs = get_config_store(
                         self._agentConfig).crawl_config_template()
                 except Exception as e:
                     log.warn('Something went wrong while looking for config template changes: %s' % str(e))
 
             # Check if we should run service discovery
-            # This flag can be set through the docker_daemon check or ConfigStore.crawl_config_template
-            if self._agentConfig.get('reload_check_configs'):
+            # This flag can be set through the docker_daemon check or using ConfigStore.crawl_config_template
+            if self.sd_backend.reload_check_configs:
                 self.reload_configs()
                 self.configs_reloaded = True
-                self._agentConfig['reload_check_configs'] = False
+                self.sd_backend.reload_check_configs = False
 
             if profiled:
                 if collector_profiled_runs >= self.collector_profile_interval:

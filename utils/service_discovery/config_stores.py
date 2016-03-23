@@ -4,6 +4,10 @@ from utils.service_discovery.etcd_config_store import EtcdStore
 from utils.service_discovery.consul_config_store import ConsulStore
 
 
+SD_CONFIG_BACKENDS = ['etcd', 'consul']  # noqa: used somewhere else
+SD_TEMPLATE_DIR = '/datadog/check_configs'
+
+
 def get_config_store(agentConfig):
     if agentConfig.get('sd_config_backend') == 'etcd':
         return EtcdStore(agentConfig)
@@ -11,6 +15,27 @@ def get_config_store(agentConfig):
         return ConsulStore(agentConfig)
     elif agentConfig.get('sd_config_backend') is None:
         return StubStore(agentConfig)
+
+
+def extract_sd_config(config):
+    """Extract configuration about service discovery for the agent"""
+    sd_config = {}
+    if config.has_option('Main', 'sd_config_backend'):
+        sd_config['sd_config_backend'] = config.get('Main', 'sd_config_backend')
+    else:
+        sd_config['sd_config_backend'] = None
+    if config.has_option('Main', 'sd_template_dir'):
+        sd_config['sd_template_dir'] = config.get(
+            'Main', 'sd_template_dir')
+    else:
+        sd_config['sd_template_dir'] = SD_TEMPLATE_DIR
+    if config.has_option('Main', 'sd_backend_host'):
+        sd_config['sd_backend_host'] = config.get(
+            'Main', 'sd_backend_host')
+    if config.has_option('Main', 'sd_backend_port'):
+        sd_config['sd_backend_port'] = config.get(
+            'Main', 'sd_backend_port')
+    return sd_config
 
 
 class StubStore(AbstractConfigStore):

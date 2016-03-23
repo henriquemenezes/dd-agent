@@ -22,24 +22,21 @@ from urlparse import urlparse
 from util import check_yaml, get_os
 from utils.platform import Platform
 from utils.proxy import get_proxy
+from utils.service_discovery.configcheck import CONFIG_FROM_FILE
+from utils.service_discovery.config_stores import extract_sd_config, SD_CONFIG_BACKENDS
+from utils.service_discovery.sd_backend import get_sd_backend, AUTO_CONFIG_DIR, SD_BACKENDS
 from utils.subprocess_output import (
     get_subprocess_output,
     SubprocessOutputEmptyError,
 )
-from utils.service_discovery.abstract_config_store import AbstractConfigStore
-from utils.service_discovery.sd_backend import get_sd_backend
 
 # CONSTANTS
 AGENT_VERSION = "5.7.0"
 DATADOG_CONF = "datadog.conf"
 UNIX_CONFIG_PATH = '/etc/dd-agent'
 MAC_CONFIG_PATH = '/opt/datadog-agent/etc'
-AUTO_CONFIG_DIR = 'auto_conf/'
 DEFAULT_CHECK_FREQUENCY = 15   # seconds
 LOGGING_MAX_BYTES = 5 * 1024 * 1024
-SD_BACKENDS = ['docker']
-SD_CONFIG_BACKENDS = ['etcd', 'consul']
-CONFIG_FROM_FILE = 'YAML file'
 
 log = logging.getLogger(__name__)
 
@@ -407,9 +404,6 @@ def get_config(parse_args=True, cfg_path=None, options=None):
             if config.has_option('Main', 'sd_config_backend'):
                 conf_backend = config.get('Main', 'sd_config_backend')
 
-            # This flag is used to tell the agent it needs to run reload_configs
-            agentConfig['reload_check_configs'] = False
-
             if backend not in SD_BACKENDS:
                 log.error("The backend {0} is not supported. "
                           "Service discovery won't be enabled.".format(backend))
@@ -424,7 +418,7 @@ def get_config(parse_args=True, cfg_path=None, options=None):
                 conf_backend = None
             agentConfig['sd_config_backend'] = conf_backend
 
-            additional_config = AbstractConfigStore.extract_sd_config(config)
+            additional_config = extract_sd_config(config)
             agentConfig.update(additional_config)
 
         # Concerns only Windows
