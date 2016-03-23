@@ -42,6 +42,8 @@ namespace :ci do
     task before_script: ['ci:common:before_script']
 
     task lint: ['rubocop'] do
+      sh %(echo "PWD IS")
+      sh %(pwd)
       sh %(flake8)
       sh %(find . -name '*.py' -not\
              \\( -path '*.cache*' -or -path '*embedded*' -or -path '*venv*' -or -path '*.git*' \\)\
