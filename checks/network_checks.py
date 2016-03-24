@@ -212,9 +212,16 @@ class NetworkCheck(AgentCheck):
             return key
 
         host = instance.get('host', None)
+        ip = instance.get('ip_address', None)
         port = instance.get('port', None)
         if host and port:
             key = "{host}:{port}".format(host=host, port=port)
+        elif ip and port:
+            key = "{host}:{port}".format(host=ip, port=port)
+        elif host:
+            key = host
+        elif ip:
+            key = ip
 
         return key
 
