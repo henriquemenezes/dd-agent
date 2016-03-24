@@ -16,6 +16,7 @@ from utils.platform import Platform
 # No more hardcoded default checks
 DEFAULT_CHECKS = []
 
+
 class TestConfig(unittest.TestCase):
     def testWhiteSpaceConfig(self):
         """Leading whitespace confuse ConfigParser
@@ -69,10 +70,10 @@ class TestConfig(unittest.TestCase):
             u'i-123445',
             u'5dfsdfsdrrfsv',
             u'432498234234A'
-            u'234234235235235235', # Couldn't find anything in the RFC saying it's not valid
+            u'234234235235235235',  # Couldn't find anything in the RFC saying it's not valid
             u'A45fsdff045-dsflk4dfsdc.ret43tjssfd',
             u'4354sfsdkfj4TEfdlv56gdgdfRET.dsf-dg',
-            u'r'*255,
+            u'r' * 255,
         ]
 
         not_valid_hostnames = [
@@ -93,11 +94,11 @@ class TestConfig(unittest.TestCase):
         # Make the function run as if it was on windows
         func = Platform.is_win32
         try:
-            Platform.is_win32 = staticmethod(lambda : True)
+            Platform.is_win32 = staticmethod(lambda: True)
 
             test_cases = [
-                ("C:\\Documents\\Users\\script.py:C:\\Documents\\otherscript.py", ["C:\\Documents\\Users\\script.py","C:\\Documents\\otherscript.py"]),
-                ("C:\\Documents\\Users\\script.py:parser.py", ["C:\\Documents\\Users\\script.py","parser.py"])
+                ("C:\\Documents\\Users\\script.py:C:\\Documents\\otherscript.py", ["C:\\Documents\\Users\\script.py", "C:\\Documents\\otherscript.py"]),
+                ("C:\\Documents\\Users\\script.py:parser.py", ["C:\\Documents\\Users\\script.py", "parser.py"])
             ]
 
             for test_case, expected_result in test_cases:
@@ -114,11 +115,13 @@ class TestConfig(unittest.TestCase):
             self.assertTrue(c in init_checks_names)
 
 
-TEMP_3RD_PARTY_CHECKS_DIR = '/tmp/dd-agent-tests/3rd-party'
-TEMP_ETC_CHECKS_DIR = '/tmp/dd-agent-tests/etc/checks.d'
-TEMP_ETC_CONF_DIR = '/tmp/dd-agent-tests/etc/conf.d'
-TEMP_AGENT_CHECK_DIR = '/tmp/dd-agent-tests'
-FIXTURE_PATH = 'tests/core/fixtures/checks'
+TMP_DIR = tempfile.gettempdir()
+TEMP_3RD_PARTY_CHECKS_DIR = '%s/dd-agent-tests/3rd-party' % TMP_DIR
+TEMP_ETC_CHECKS_DIR = '%s/dd-agent-tests/etc/checks.d' % TMP_DIR
+TEMP_ETC_CONF_DIR = '%s/dd-agent-tests/etc/conf.d' % TMP_DIR
+TEMP_AGENT_CHECK_DIR = '%s/dd-agent-tests' % TMP_DIR
+FIXTURE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fixtures', 'checks')
+
 
 @mock.patch('config.get_checksd_path', return_value=TEMP_AGENT_CHECK_DIR)
 @mock.patch('config.get_confd_path', return_value=TEMP_ETC_CONF_DIR)

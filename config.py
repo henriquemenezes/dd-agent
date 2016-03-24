@@ -30,7 +30,6 @@ from utils.subprocess_output import (
     SubprocessOutputEmptyError,
 )
 
-
 # CONSTANTS
 AGENT_VERSION = "5.8.0"
 DATADOG_CONF = "datadog.conf"
@@ -771,7 +770,7 @@ def _all_configs_paths(osname, agentConfig):
     """
     try:
         confd_path = get_confd_path(osname)
-        all_configs = [glob.glob(os.path.join(confd_path, '*.yaml'))]
+        all_configs = glob.glob(os.path.join(confd_path, '*.yaml'))
     except PathNotFound, e:
         log.error("No conf.d folder found at '%s' or in the directory where the Agent is currently deployed.\n" % e.args[0])
         sys.exit(3)
@@ -782,7 +781,7 @@ def _all_configs_paths(osname, agentConfig):
     if not any('nagios' in config for config in itertools.chain(*all_configs)):
         # check if it's configured in datadog.conf the old way
         if any([nagios_key in agentConfig for nagios_key in NAGIOS_OLD_CONF_KEYS]):
-            all_configs.append(['deprecated/nagios'])
+            all_configs.append('deprecated/nagios')
 
 
     return all_configs
@@ -822,10 +821,6 @@ def _validate_config(config_path, check_name, agentConfig):
         log.exception("Unable to parse yaml config in %s" % config_path)
         traceback_message = traceback.format_exc()
         return False, None, {check_name: {'error': str(e), 'traceback': traceback_message}}
-    # Look for the per-check config, which *must* exist
-    if not check_config.get('instances'):
-        log.error("Config %s is missing 'instances'" % config_path)
-        return False, None, {}
     return True, check_config, {}
 
 def _validate_check(check_name, check_path):
@@ -903,7 +898,7 @@ def load_check_directory(agentConfig, hostname):
 
     checks_places = _checks_places(agentConfig, osname)
 
-    for config_path in itertools.chain(*all_configs_paths):
+    for config_path in all_configs_paths:
         # '/etc/dd-agent/checks.d/my_check.py' -> 'my_check'
         check_name = config_path.rsplit('.', 1)[0].rsplit('/', 1)[-1]
 
