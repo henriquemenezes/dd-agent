@@ -235,6 +235,27 @@ class TestConfigLoadCheckDirectory(unittest.TestCase):
         self.assertEquals(1, len(checks['initialized_checks']))
         self.assertEquals('valid_check_1', checks['initialized_checks'][0].check(None))
 
+    def testConfigDefault(self, *args):
+        copyfile('%s/valid_conf.yaml' % FIXTURE_PATH,
+            '%s/test_check.yaml.default' % TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_1.py' % FIXTURE_PATH,
+            '%s/test_check.py' % TEMP_ETC_CHECKS_DIR)
+        checks = load_check_directory({"additional_checksd": TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+
+    def testConfigCustomOverDefault(self, *args):
+        copyfile('%s/valid_conf.yaml' % FIXTURE_PATH,
+            '%s/test_check.yaml.default' % TEMP_ETC_CONF_DIR)
+        # a 2nd valid conf file, slightly different so that we can test which one has been picked up
+        # (with 2 instances for instance)
+        copyfile('%s/valid_conf_2.yaml' % FIXTURE_PATH,
+            '%s/test_check.yaml' % TEMP_ETC_CONF_DIR)
+        copyfile('%s/valid_check_1.py' % FIXTURE_PATH,
+            '%s/test_check.py' % TEMP_ETC_CHECKS_DIR)
+        checks = load_check_directory({"additional_checksd": TEMP_ETC_CHECKS_DIR}, "foo")
+        self.assertEquals(1, len(checks['initialized_checks']))
+        self.assertEquals(2, checks['initialized_checks'][0].instance_count())  # check that we picked the right conf
+
     def tearDown(self):
         for _dir in self.TEMP_DIRS:
             rmtree(_dir)

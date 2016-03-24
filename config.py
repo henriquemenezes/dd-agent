@@ -771,9 +771,16 @@ def _all_configs_paths(osname, agentConfig):
     try:
         confd_path = get_confd_path(osname)
         all_configs = glob.glob(os.path.join(confd_path, '*.yaml'))
+        all_default_configs = glob.glob(os.path.join(confd_path, '*.yaml.default'))
     except PathNotFound, e:
         log.error("No conf.d folder found at '%s' or in the directory where the Agent is currently deployed.\n" % e.args[0])
         sys.exit(3)
+
+    if all_default_configs:
+        current_configs = set([_conf_path_to_check_name(conf) for conf in all_configs])
+        for default_config in all_default_configs:
+            if not _conf_path_to_check_name(default_config) in current_configs:
+                all_configs.append(default_config)
 
     # Compatibility code for the Nagios checks if it's still configured
     # in datadog.conf
@@ -783,8 +790,10 @@ def _all_configs_paths(osname, agentConfig):
         if any([nagios_key in agentConfig for nagios_key in NAGIOS_OLD_CONF_KEYS]):
             all_configs.append('deprecated/nagios')
 
-
     return all_configs
+
+def _conf_path_to_check_name(conf_path):
+    return conf_path.rsplit('/', 1)[-1].split('.yaml')[0]
 
 def _checks_places(agentConfig, osname):
     """ Return methods to generated paths to inspect for a check provided it's name
@@ -900,7 +909,7 @@ def load_check_directory(agentConfig, hostname):
 
     for config_path in all_configs_paths:
         # '/etc/dd-agent/checks.d/my_check.py' -> 'my_check'
-        check_name = config_path.rsplit('.', 1)[0].rsplit('/', 1)[-1]
+        check_name = _conf_path_to_check_name(config_path)
 
         conf_is_valid, check_config, invalid_check = _validate_config(config_path, check_name, agentConfig)
         init_failed_checks.update(invalid_check)
