@@ -32,7 +32,7 @@ class NetworkCheck(AgentCheck):
     SERVICE_CHECK_PREFIX = 'network_check'
 
     STATUS_TO_SERVICE_CHECK = {
-        Status.UP  : AgentCheck.OK,
+        Status.UP : AgentCheck.OK,
         Status.WARNING : AgentCheck.WARNING,
         Status.CRITICAL : AgentCheck.CRITICAL,
         Status.DOWN : AgentCheck.CRITICAL,
@@ -214,7 +214,7 @@ class NetworkCheck(AgentCheck):
         host = instance.get('host', None)
         port = instance.get('port', None)
         if host and port:
-            key = "{host}:{port}".format(host=host, port=instance['port'])
+            key = "{host}:{port}".format(host=host, port=port)
 
         return key
 
