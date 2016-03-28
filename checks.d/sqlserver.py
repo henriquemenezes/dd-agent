@@ -339,7 +339,12 @@ class SQLServer(AgentCheck):
             if conn_key not in self.connections:
                 self.connections[conn_key] = {'conn': rawconn, 'timeout': timeout}
             else:
-                # Existing Connection object will be closed (if open) when GC'd
+                try:
+                    # explicitly trying to avoid leaks...
+                    self.connections[conn_key]['conn'].close()
+                except:
+                    pass
+
                 self.connections[conn_key]['conn'] = rawconn
         except Exception as e:
             self.log.warning("Could not connect to SQL Server\n{0}".format(e))
