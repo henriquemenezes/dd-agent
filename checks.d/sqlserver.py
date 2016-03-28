@@ -331,16 +331,16 @@ class SQLServer(AgentCheck):
         """
 
         conn_key = self._conn_key(instance)
-        if conn_key not in self.connections:
-            timeout = int(instance.get('command_timeout',
-                                       self.DEFAULT_COMMAND_TIMEOUT))
-            rawconn = adodbapi.connect(self._conn_string(instance=instance),
-                                       timeout=timeout)
-            self.connections[conn_key] = {'conn': rawconn, 'timeout': timeout}
-
-        connection = self.connections[conn_key]['conn']
+        timeout = int(instance.get('command_timeout',
+                                   self.DEFAULT_COMMAND_TIMEOUT))
         try:
-            connection.connect()
+            rawconn = adodbapi.connect(self._conn_string(instance=instance),
+                                    timeout=timeout)
+            if conn_key not in self.connections:
+                self.connections[conn_key] = {'conn': rawconn, 'timeout': timeout}
+            else:
+                # Existing Connection object will be closed (if open) when GC'd
+                self.connections[conn_key]['conn'] = rawconn
         except Exception as e:
             self.log.warning("Could not connect to SQL Server\n{0}".format(e))
 
