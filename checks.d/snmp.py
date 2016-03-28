@@ -79,7 +79,7 @@ class SnmpCheck(NetworkCheck):
         retries = int(instance.get('retries', self.DEFAULT_RETRIES))
         enforce_constraints = _is_affirmative(instance.get('enforce_mib_constraints', True))
 
-        instance_key = self._get_instance_key(instance)
+        instance_key = instance['name']
         cmd_generator = self.generators.get(instance_key, None)
         if not cmd_generator:
             cmd_generator = self.create_command_generator(self.mibs_path, self.ignore_nonincreasing_oid)
@@ -341,8 +341,7 @@ class SnmpCheck(NetworkCheck):
                 self.report_raw_metrics(metrics, raw_results, tags)
         except Exception as e:
             if "service_check_error" not in instance:
-                key = "{0}:{1}".format(instance['ip_address'], instance.get("port", 161))
-                instance["service_check_error"] = "Fail to collect metrics for {0}: {1}".format(key, e)
+                instance["service_check_error"] = "Fail to collect metrics for {0} - {1}".format(instance['name'], e)
             self.warning(instance["service_check_error"])
             return [(self.SC_STATUS, Status.CRITICAL, instance["service_check_error"])]
         finally:
