@@ -70,10 +70,11 @@ class NetworkCheck(AgentCheck):
         # to keep track of statuses
         names = []
         for inst in instances:
-            if 'name' not in inst:
+            name = inst.get('name', None)
+            if not name:
                 raise Exception("All instances should have a 'name' parameter,"
                                 " error on instance: {0}".format(inst))
-            if inst['name'] in names:
+            if name in names:
                 raise Exception("Duplicate names for instances with name {0}"
                                 .format(inst['name']))
 
@@ -115,7 +116,7 @@ class NetworkCheck(AgentCheck):
             raise Exception("Thread number (%s) is exploding. Skipping this check" % threading.activeCount())
         self._process_results()
         self._clean()
-        name = self._get_instance_key(instance)
+        name = instance.get('name', None)
         if name is None:
             self.log.error('Each service check must have a name')
             return
@@ -153,7 +154,7 @@ class NetworkCheck(AgentCheck):
             except Empty:
                 break
 
-            instance_key = self._get_instance_key(instance)
+            instance_name = instance['name']
             if status == FAILURE:
                 self.nb_failures += 1
                 if self.nb_failures >= self.pool_size - 1:
@@ -161,7 +162,7 @@ class NetworkCheck(AgentCheck):
                     self.restart_pool()
 
                 # clean failed job
-                self._clean_job(instance_key)
+                self._clean_job(instance_name)
                 continue
 
             self.report_as_service_check(sc_name, status, instance, msg)
@@ -174,10 +175,10 @@ class NetworkCheck(AgentCheck):
                 self.warning("Using events for service checks is deprecated in favor of monitors and will be removed in future versions of the Datadog Agent.")
                 event = None
 
-                if instance_key not in self.statuses:
-                    self.statuses[instance_key] = defaultdict(list)
+                if instance_name not in self.statuses:
+                    self.statuses[instance_name] = defaultdict(list)
 
-                self.statuses[instance_key][sc_name].append(status)
+                self.statuses[instance_name][sc_name].append(status)
 
                 window = int(instance.get('window', 1))
 
@@ -187,57 +188,38 @@ class NetworkCheck(AgentCheck):
 
                 threshold = instance.get('threshold', 1)
 
-                if len(self.statuses[instance_key][sc_name]) > window:
-                    self.statuses[instance_key][sc_name].pop(0)
+                if len(self.statuses[instance_name][sc_name]) > window:
+                    self.statuses[instance_name][sc_name].pop(0)
 
-                nb_failures = self.statuses[instance_key][sc_name].count(Status.DOWN)
+                nb_failures = self.statuses[instance_name][sc_name].count(Status.DOWN)
 
                 if nb_failures >= threshold:
-                    if self.notified.get((instance_key, sc_name), Status.UP) != Status.DOWN:
+                    if self.notified.get((instance_name, sc_name), Status.UP) != Status.DOWN:
                         event = self._create_status_event(sc_name, status, msg, instance)
-                        self.notified[(instance_key, sc_name)] = Status.DOWN
+                        self.notified[(instance_name, sc_name)] = Status.DOWN
                 else:
-                    if self.notified.get((instance_key, sc_name), Status.UP) != Status.UP:
+                    if self.notified.get((instance_name, sc_name), Status.UP) != Status.UP:
                         event = self._create_status_event(sc_name, status, msg, instance)
-                        self.notified[(instance_key, sc_name)] = Status.UP
+                        self.notified[(instance_name, sc_name)] = Status.UP
 
                 if event is not None:
                     self.events.append(event)
 
-            self._clean_job(instance_key)
+            self._clean_job(instance_name)
 
-    def _get_instance_key(self, instance):
-        key = instance.get('name', None)
-        if key:
-            return key
-
-        host = instance.get('host', None)
-        ip = instance.get('ip_address', None)
-        port = instance.get('port', None)
-        if host and port:
-            key = "{host}:{port}".format(host=host, port=port)
-        elif ip and port:
-            key = "{host}:{port}".format(host=ip, port=port)
-        elif host:
-            key = host
-        elif ip:
-            key = ip
-
-        return key
-
-    def _clean_job(self, instance_key):
+    def _clean_job(self, instance_name):
         # The job is finished here, this instance can be re processed
-        if instance_key in self.jobs_status:
-            self.log.debug("Instance: %s cleaned from jobs status." % instance_key)
-            del self.jobs_status[instance_key]
+        if instance_name in self.jobs_status:
+            self.log.debug("Instance: %s cleaned from jobs status." % instance_name)
+            del self.jobs_status[instance_name]
 
         # if an exception happened, log it
-        if instance_key in self.jobs_results:
-            self.log.debug("Instance: %s cleaned from jobs results." % instance_key)
-            ret = self.jobs_results[instance_key].get()
+        if instance_name in self.jobs_results:
+            self.log.debug("Instance: %s cleaned from jobs results." % instance_name)
+            ret = self.jobs_results[instance_name].get()
             if isinstance(ret, Exception):
                 self.log.exception("Exception in worker thread: {0}".format(ret))
-            del self.jobs_results[instance_key]
+            del self.jobs_results[instance_name]
 
 
     def _check(self, instance):

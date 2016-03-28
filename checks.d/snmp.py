@@ -53,8 +53,7 @@ class SnmpCheck(NetworkCheck):
     def __init__(self, name, init_config, agentConfig, instances):
         for instance in instances:
             if 'name' not in instance:
-                port = int(instance.get("port", 161)) # Default SNMP port
-                instance['name'] = "{0}:{1}".format(instance['ip_address'], port)
+                instance['name'] = self._get_instance_key(instance)
             instance['skip_event'] = True
 
         self.generators = {}
@@ -87,6 +86,25 @@ class SnmpCheck(NetworkCheck):
             self.generators[instance_key] = cmd_generator
 
         return cmd_generator, ip_address, tags, metrics, timeout, retries, enforce_constraints
+
+    def _get_instance_key(self, instance):
+        key = instance.get('name', None)
+        if key:
+            return key
+
+        host = instance.get('host', None)
+        ip = instance.get('ip_address', None)
+        port = instance.get('port', None)
+        if host and port:
+            key = "{host}:{port}".format(host=host, port=port)
+        elif ip and port:
+            key = "{host}:{port}".format(host=ip, port=port)
+        elif host:
+            key = host
+        elif ip:
+            key = ip
+
+        return key
 
     def snmp_logger(self, func):
         """
