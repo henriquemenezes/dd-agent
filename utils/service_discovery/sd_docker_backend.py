@@ -9,8 +9,8 @@ from util import check_yaml
 from utils.checkfiles import get_conf_path
 from utils.dockerutil import DockerUtil
 from utils.kubeutil import _get_default_router, DEFAULT_KUBELET_PORT
-from utils.service_discovery.config_stores import get_config_store
 from utils.service_discovery.abstract_sd_backend import AbstractSDBackend
+from utils.service_discovery.config_stores import get_config_store, TRACE_CONFIG
 
 log = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class SDDockerBackend(AbstractSDBackend):
             ) for container in self.docker_client.containers()]
         configs = {}
         # used by the configcheck agent command to trace where check configs come from
-        trace_config = self.agentConfig.get('trace_config', False)
+        trace_config = self.agentConfig.get(TRACE_CONFIG, False)
 
         for image, cid, labels in containers:
             try:

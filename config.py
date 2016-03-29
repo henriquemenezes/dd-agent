@@ -22,8 +22,8 @@ from urlparse import urlparse
 from util import check_yaml, get_os
 from utils.platform import Platform
 from utils.proxy import get_proxy
-from utils.service_discovery.configcheck import CONFIG_FROM_FILE
 from utils.service_discovery.config import extract_agent_config
+from utils.service_discovery.config_stores import CONFIG_FROM_FILE, TRACE_CONFIG
 from utils.service_discovery.sd_backend import get_sd_backend, AUTO_CONFIG_DIR, SD_BACKENDS
 from utils.subprocess_output import (
     get_subprocess_output,
@@ -791,8 +791,9 @@ def load_check_directory(agentConfig, hostname):
     deprecated_checks = {}
     agentConfig['checksd_hostname'] = hostname
 
-    # for debugging purpose
-    if agentConfig.get('trace_config'):
+    # the TRACE_CONFIG flag is used by the configcheck to trace config object loading and
+    # where they come from (service discovery, auto configuration or configuration file).
+    if agentConfig.get(TRACE_CONFIG):
         configs_and_sources = {
             # check_name: (config_source, config)
         }
@@ -852,7 +853,7 @@ def load_check_directory(agentConfig, hostname):
                     # flag set by the configcheck command to track where all configs come from
                     # if it's set, service_disco_configs will look like:
                     # 'check_name': (config_src, (sd_init_config, sd_instances)) instead
-                    if agentConfig.get('trace_config'):
+                    if agentConfig.get(TRACE_CONFIG):
                         sd_init_config, sd_instances = service_disco_configs[check_name][1]
                         configs_and_sources[check_name] = (
                             service_disco_configs[check_name][0],
@@ -870,7 +871,7 @@ def load_check_directory(agentConfig, hostname):
             if conf_exists:
                 try:
                     check_config = check_yaml(conf_path)
-                    if agentConfig.get('trace_config'):
+                    if agentConfig.get(TRACE_CONFIG):
                         configs_and_sources[check_name] = (CONFIG_FROM_FILE, check_config)
                 except Exception, e:
                     log.exception("Unable to parse yaml config in %s" % conf_path)
@@ -887,7 +888,7 @@ def load_check_directory(agentConfig, hostname):
                                     "and will be removed in a future version. "
                                     "Please use conf.d")
                         check_config = {'instances': [dict((key, agentConfig[key]) for key in agentConfig if key in NAGIOS_OLD_CONF_KEYS)]}
-                        if agentConfig.get('trace_config'):
+                        if agentConfig.get(TRACE_CONFIG):
                             configs_and_sources[check_name] = (CONFIG_FROM_FILE, check_config)
                     else:
                         continue
@@ -950,7 +951,7 @@ def load_check_directory(agentConfig, hostname):
     log.info('initialized checks.d checks: %s' % [k for k in initialized_checks.keys() if k != AGENT_METRICS_CHECK_NAME])
     log.info('initialization failed checks.d checks: %s' % init_failed_checks.keys())
 
-    if agentConfig.get('trace_config'):
+    if agentConfig.get(TRACE_CONFIG):
         return configs_and_sources
 
     return {'initialized_checks': initialized_checks.values(),

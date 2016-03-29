@@ -9,9 +9,13 @@ from urllib3.exceptions import TimeoutError
 # project
 from utils.checkfiles import get_check_class, get_auto_conf, get_auto_conf_images
 from utils.singleton import Singleton
-from utils.service_discovery.configcheck import CONFIG_FROM_AUTOCONF, CONFIG_FROM_TEMPLATE
 
 log = logging.getLogger(__name__)
+
+CONFIG_FROM_AUTOCONF = 'auto-configuration'
+CONFIG_FROM_FILE = 'YAML file'
+CONFIG_FROM_TEMPLATE = 'template'
+TRACE_CONFIG = 'trace_config'  # used for tracing config load by service discovery
 
 
 class KeyNotFound(Exception):
@@ -73,7 +77,7 @@ class AbstractConfigStore(object):
     def get_check_tpl(self, image, **kwargs):
         """Retrieve template config strings from the ConfigStore."""
         # this flag is used when no valid configuration store was provided
-        trace_config = kwargs.get('trace_config', False)
+        trace_config = kwargs.get(TRACE_CONFIG, False)
         source = ''
 
         if kwargs.get('auto_conf') is True:

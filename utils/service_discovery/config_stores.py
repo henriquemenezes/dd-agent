@@ -1,5 +1,7 @@
 # project
-from utils.service_discovery.abstract_config_store import AbstractConfigStore
+from utils.service_discovery.abstract_config_store import AbstractConfigStore, CONFIG_FROM_AUTOCONF, \
+    CONFIG_FROM_FILE, CONFIG_FROM_TEMPLATE, TRACE_CONFIG
+
 from utils.service_discovery.etcd_config_store import EtcdStore
 from utils.service_discovery.consul_config_store import ConsulStore
 

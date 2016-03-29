@@ -1,23 +1,11 @@
-from config import load_check_directory, SD_CONFIG_BACKENDS
-from util import get_hostname
+# project
 from utils.dockerutil import DockerUtil
-from utils.service_discovery.config_stores import get_config_store
+from utils.service_discovery.config_stores import get_config_store, SD_CONFIG_BACKENDS
 
 
-CONFIG_FROM_AUTOCONF = 'auto-configuration'
-CONFIG_FROM_FILE = 'YAML file'
-CONFIG_FROM_TEMPLATE = 'template'
-
-
-def sd_configcheck(agentConfig):
-    hostname = get_hostname(agentConfig)
-    agentConfig['trace_config'] = True
-    configs = {
-        # check_name: (config_source, config)
-    }
-
-    print("\nLoading check configurations...\n\n")
-    configs = load_check_directory(agentConfig, hostname)
+def sd_configcheck(agentConfig, configs):
+    """Trace how the configuration objects are loaded and from where.
+        Also print containers detected by the agent and templates from the config store."""
     print("\nSource of the configuration objects built by the agent:\n")
     for check_name, config in configs.iteritems():
         print('Check "%s":\n  source --> %s\n  config --> %s\n' % (check_name, config[0], config[1]))

@@ -44,7 +44,7 @@ from utils.jmx import jmx_command
 from utils.pidfile import PidFile
 from utils.profile import AgentProfiler
 from utils.service_discovery.configcheck import sd_configcheck
-from utils.service_discovery.config_stores import get_config_store
+from utils.service_discovery.config_stores import get_config_store, TRACE_CONFIG
 from utils.service_discovery.sd_backend import get_sd_backend
 
 # Constants
@@ -394,8 +394,19 @@ def main():
 
     elif 'configcheck' == command or 'configtest' == command:
         configcheck()
+
         if agentConfig.get('service_discovery', False):
-            sd_configcheck(agentConfig)
+            # set the TRACE_CONFIG flag to True to make load_check_directory return
+            # the source of config objects.
+            # Then call load_check_directory here and pass the result to sd_configcheck
+            # to avoid circular imports
+            agentConfig[TRACE_CONFIG] = True
+            configs = {
+                # check_name: (config_source, config)
+            }
+            print("\nLoading check configurations...\n\n")
+            configs = load_check_directory(agentConfig, hostname)
+            sd_configcheck(agentConfig, configs)
 
     elif 'jmx' == command:
         jmx_command(args[1:], agentConfig)
