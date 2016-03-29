@@ -38,7 +38,7 @@ class AbstractConfigStore(object):
 
     @classmethod
     def _drop(cls):
-        """Drop the config store instance"""
+        """Drop the config store instance. This is only used for testing."""
         del cls._instances[cls]
 
     def _extract_settings(self, config):
@@ -78,7 +78,6 @@ class AbstractConfigStore(object):
         """Retrieve template config strings from the ConfigStore."""
         # this flag is used when no valid configuration store was provided
         trace_config = kwargs.get(TRACE_CONFIG, False)
-        source = ''
 
         if kwargs.get('auto_conf') is True:
             auto_config = self._get_auto_config(image)
@@ -95,10 +94,17 @@ class AbstractConfigStore(object):
                 init_config_tpl = self.client_read(path.join(self.sd_template_dir, image, 'init_config').lstrip('/'))
                 instance_tpl = self.client_read(path.join(self.sd_template_dir, image, 'instance').lstrip('/'))
                 source = CONFIG_FROM_TEMPLATE
-            except (KeyNotFound, TimeoutError):
-                # If it failed, try to read from auto-config templates
-                log.info("Could not find directory {0} in the config store, "
-                         "trying to auto-configure the check...".format(image))
+            except (KeyNotFound, TimeoutError) as ex:
+                # first case is kind of expected, it means that no template was provided for this container
+                if isinstance(ex, KeyNotFound):
+                    log.debug("Could not find directory {0} in the config store, "
+                              "trying to auto-configure the check...".format(image))
+                # this case is not expected, the agent can't reach the config store
+                elif isinstance(ex, TimeoutError):
+                    log.warning("Connection to the config backend timed out. Is it reachable?\n"
+                                "Trying to auto-configure a check for the image %s..." % image)
+
+                # In both cases we try to read from auto-config templates
                 auto_config = self._get_auto_config(image)
                 if auto_config is not None:
                     source = CONFIG_FROM_AUTOCONF
