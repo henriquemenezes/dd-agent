@@ -135,7 +135,12 @@ class SDDockerBackend(AbstractSDBackend):
         """Query the pod list from the kubernetes API and returns it as a list"""
         host_ip = _get_default_router()
         config_file_path = get_conf_path(KUBERNETES_CHECK_NAME)
-        check_config = check_yaml(config_file_path)
+        try:
+            check_config = check_yaml(config_file_path)
+        except Exception:
+            log.error('Kubernetes configuration file is invalid. '
+                      'Trying connecting to kubelet with default settings anyway...')
+            check_config = {}
         instances = check_config.get('instances', [{}])
         kube_port = instances[0].get('kubelet_port', DEFAULT_KUBELET_PORT)
         pod_list = requests.get('http://%s:%s/pods' % (host_ip, kube_port)).json()

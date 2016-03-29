@@ -37,9 +37,14 @@ class DockerUtil():
         conf_path = get_conf_path(CHECK_NAME)
 
         if conf_path is not None and os.path.exists(conf_path):
-            check_config = check_yaml(conf_path)
-            init_config, instances = check_config.get('init_config', {}), check_config['instances']
-            init_config = {} if init_config is None else init_config
+            try:
+                check_config = check_yaml(conf_path)
+                init_config, instances = check_config.get('init_config', {}), check_config['instances']
+                init_config = {} if init_config is None else init_config
+            except Exception:
+                log.exception('Docker check configuration file is invalid. The docker check and '
+                              'other Docker related components will not work.')
+                init_config, instances = {}, []
 
             self._docker_root = init_config.get('docker_root', '/')
 

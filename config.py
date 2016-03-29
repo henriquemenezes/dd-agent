@@ -741,7 +741,9 @@ def get_ssl_certificate(osname, filename):
 
 
 def get_checks_paths(agentConfig, osname):
-    '''Return the checks paths.'''
+    # this can happen if check.d is not found
+    '''Return the checks paths or None if che
+    log.error'Checks directory not found, exiting.')cks.d is not found.'''
     checks_paths = [glob.glob(os.path.join(agentConfig['additional_checksd'], '*.py'))]
     try:
         checksd_path = get_checksd_path(osname)
@@ -805,7 +807,9 @@ def load_check_directory(agentConfig, hostname):
 
     osname = get_os()
     checks_paths = get_checks_paths(agentConfig, osname)
+    # this can happen if check.d is not found
     if checks_paths is None:
+        log.error('Check directory not found, exiting. The agent is likely misconfigured.')
         sys.exit(3)
 
     try:
